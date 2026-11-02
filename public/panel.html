@@ -1,0 +1,1438 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>记忆星海</title>
+<style>
+  :root {
+    --bg: #03050b;
+    --glass: rgba(10, 14, 24, .88);
+    --glass-2: rgba(16, 22, 36, .8);
+    --line: rgba(140, 165, 215, .14);
+    --line-soft: rgba(140, 165, 215, .07);
+    --text: #e9eefb;
+    --dim: #8192ad;
+    --dim2: #5a6a85;
+    --acc: #7db0ff;
+    --gold: #ffd76e;
+    --ok: #34e3b0;
+    --bad: #ff7d9c;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; overflow: hidden; color: var(--text);
+    font: 13px/1.6 "Segoe UI Variable Display", "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    background: var(--bg);
+  }
+  /* 背景光晕由 canvas 每帧自绘，这里不再叠一层带动画+滤镜的整屏图层（纯浪费） */
+  body::after {
+    content: ""; position: fixed; inset: 0; z-index: 2; pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 52%, rgba(2, 4, 9, .6) 100%);
+  }
+  *::-webkit-scrollbar { width: 8px; }
+  *::-webkit-scrollbar-thumb { background: rgba(148,170,210,.18); border-radius: 8px; border: 2px solid transparent; background-clip: content-box; }
+
+  #cv { position: fixed; inset: 0; display: block; z-index: 1; cursor: grab; }
+  #cv.rotating { cursor: move; }
+  #cv.pointing { cursor: pointer; }
+  #cv.grabbingStar { cursor: grabbing; }
+
+  .top {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 20;
+    padding: 12px 20px 8px; pointer-events: none;
+    background: linear-gradient(180deg, rgba(3,5,11,.85) 25%, transparent);
+  }
+  .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .brand { display: flex; align-items: center; gap: 10px; pointer-events: auto; }
+  .brand .mark {
+    width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; font-size: 17px;
+    background: linear-gradient(150deg, #2b5bd0, #16275e);
+    box-shadow: 0 6px 18px -8px rgba(70,120,255,.9), inset 0 1px 0 rgba(255,255,255,.2);
+  }
+  .brand b { font-size: 14.5px; letter-spacing: .2px; }
+  .brand small { display: block; color: var(--dim2); font-size: 10.5px; letter-spacing: 1.2px; text-transform: uppercase; }
+  .beat { width: 8px; height: 8px; border-radius: 50%; background: var(--ok);
+    box-shadow: 0 0 10px var(--ok); animation: beat 1.8s ease-in-out infinite; margin-left: 2px; }
+  @keyframes beat { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.4);opacity:.55} }
+
+  .kpis { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; pointer-events: auto; }
+  .kpi {
+    padding: 4px 11px; border-radius: 999px; font-size: 11.5px; color: var(--dim);
+    background: var(--glass); border: 1px solid var(--line);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .kpi b { color: var(--text); font-weight: 650; margin-right: 4px; }
+
+  .filters { margin-top: 8px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; pointer-events: auto; }
+  #chips { display: flex; gap: 5px; flex-wrap: wrap; }
+  .chip {
+    cursor: pointer; padding: 3px 11px; border-radius: 999px; font-size: 11.5px; color: var(--dim);
+    border: 1px solid var(--line); background: var(--glass-2);
+    transition: .16s; user-select: none; white-space: nowrap; display: inline-flex; gap: 5px; align-items: center;
+  }
+  .chip i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+  .chip:hover { color: var(--text); border-color: rgba(140,165,215,.32); }
+  .chip.on { color: #fff; border-color: transparent; background: linear-gradient(140deg, rgba(125,176,255,.9), rgba(70,110,220,.9));
+    box-shadow: 0 4px 14px -6px rgba(125,176,255,.9); }
+  .chip.tog { font-size: 10.5px; padding: 3px 9px; }
+  .chip.tog.off { opacity: .45; }
+  select {
+    font: inherit; font-size: 11.5px; color: var(--text); background: var(--glass-2);
+    border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; outline: none; cursor: pointer;
+
+  }
+  .search { margin-left: auto; }
+  .search input {
+    width: 190px; padding: 5px 12px; font: inherit; font-size: 12px; color: var(--text);
+    background: var(--glass); border: 1px solid var(--line); border-radius: 999px; outline: none;
+ transition: .16s;
+  }
+  .search input:focus { width: 250px; border-color: rgba(125,176,255,.55); box-shadow: 0 0 0 3px rgba(125,176,255,.12); }
+  .search input::placeholder { color: var(--dim2); }
+
+  .side {
+    position: fixed; top: 118px; right: 16px; bottom: 56px; width: 330px; z-index: 15;
+    background: var(--glass); border: 1px solid var(--line); border-radius: 18px;
+ display: flex; flex-direction: column;
+    overflow: hidden; box-shadow: 0 24px 60px -30px rgba(0,0,0,.9);
+  }
+  .side-head { padding: 13px 18px 9px; border-bottom: 1px solid var(--line-soft); }
+  .side-head .tt { font-size: 13.5px; font-weight: 650; letter-spacing: .2px; }
+  .side-head .st { font-size: 11px; color: var(--dim2); margin-top: 2px; }
+  .tabs { display: flex; gap: 4px; margin-top: 9px; flex-wrap: wrap; }
+  .tab { cursor: pointer; font-size: 11px; color: var(--dim); padding: 3px 10px;
+    border-radius: 999px; border: 1px solid var(--line-soft); transition: .15s; user-select: none; }
+  .tab:hover { color: var(--text); }
+  .tab.on { color: #fff; background: linear-gradient(140deg, rgba(125,176,255,.85), rgba(70,110,220,.85)); border-color: transparent; }
+  #detail { flex: 1; overflow-y: auto; padding: 12px 16px; }
+  .card {
+    border: 1px solid var(--line-soft); border-radius: 12px; padding: 10px 13px; margin-bottom: 9px;
+    background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.015));
+    font-size: 12.5px; cursor: pointer; transition: .15s;
+  }
+  .card:hover { border-color: rgba(125,176,255,.4); transform: translateY(-1px); }
+  .card .t { color: var(--text); }
+  .card .m { color: var(--dim2); font-size: 10.5px; margin-top: 4px; display: flex; gap: 8px; flex-wrap: wrap; font-variant-numeric: tabular-nums; }
+  .card .m em { font-style: normal; }
+  .bar { height: 3px; border-radius: 3px; background: rgba(255,255,255,.07); margin-top: 7px; overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--acc), var(--gold)); }
+  .sec-t { font-size: 10.5px; letter-spacing: 1.4px; color: var(--dim2); text-transform: uppercase; padding: 12px 2px 6px; }
+  .foot { padding: 10px 16px 14px; border-top: 1px solid var(--line-soft); }
+  .spark { display: flex; align-items: flex-end; gap: 2px; height: 34px; }
+  .spark i { flex: 1; min-height: 2px; border-radius: 2px 2px 0 0;
+    background: linear-gradient(180deg, rgba(125,176,255,.85), rgba(125,176,255,.25)); }
+  .note { font-size: 10px; color: var(--dim2); margin-top: 6px; line-height: 1.5; }
+
+  .hbar { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; font-size: 11.5px; }
+  .hbar .lb { width: 84px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hbar .tr { flex: 1; height: 8px; border-radius: 5px; background: rgba(255,255,255,.06); overflow: hidden; }
+  .hbar .tr i { display: block; height: 100%; border-radius: 5px; background: linear-gradient(90deg, var(--acc), #b58cff); }
+  .hbar .vl { width: 46px; text-align: right; color: var(--dim2); font-variant-numeric: tabular-nums; font-size: 11px; }
+
+  .tools { position: fixed; left: 16px; bottom: 16px; z-index: 15; display: flex; gap: 6px; flex-wrap: wrap; }
+  button {
+    cursor: pointer; font: inherit; font-size: 12px; color: var(--text);
+    background: var(--glass); border: 1px solid var(--line); border-radius: 10px;
+    padding: 7px 13px; transition: .16s;
+  }
+  button:hover { border-color: rgba(125,176,255,.5); transform: translateY(-1px); }
+  button.off { color: var(--dim2); }
+  .statusbar {
+    position: fixed; left: 16px; top: 64px; z-index: 15; display: flex; gap: 6px;
+    font-size: 10px; color: var(--dim2); font-variant-numeric: tabular-nums;
+  }
+  .statusbar span { background: var(--glass-2); border: 1px solid var(--line-soft); border-radius: 6px; padding: 2px 8px; }
+  .toast {
+    position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%) translateY(14px);
+    z-index: 40; padding: 10px 20px; border-radius: 12px; font-size: 12.5px;
+    background: rgba(12,17,28,.95); border: 1px solid var(--line);
+    opacity: 0; pointer-events: none; transition: .26s; max-width: 70vw;
+    box-shadow: 0 18px 44px -20px rgba(0,0,0,.9);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .hint { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 5;
+    color: var(--dim2); font-size: 11px; pointer-events: none; }
+
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+  @media (max-width: 900px) { .side { display: none; } .search input { width: 150px; } }
+</style>
+</head>
+<body style="background:#03050b;color:#e9eefb">
+<div id="errBox" style="display:none;position:fixed;left:14px;bottom:14px;z-index:999;max-width:70vw;padding:8px 12px;border-radius:8px;background:rgba(60,10,20,.92);border:1px solid rgba(255,125,156,.5);color:#ffd7e0;font:12px/1.5 monospace;white-space:pre-wrap"></div>
+<script>window.addEventListener("error",function(e){var b=document.getElementById("errBox");if(b){b.style.display="block";b.textContent="面板脚本错误："+(e.message||e.error)+String.fromCharCode(10)+((e.filename||"")+":"+(e.lineno||""));}});</script>
+<canvas id="cv"></canvas>
+
+<div class="top">
+  <div class="row">
+    <div class="brand">
+      <div class="mark">✦</div>
+      <div><b>记忆星海</b><small>给任何 AI 机器人的记忆层</small></div>
+      <span class="beat"></span>
+    </div>
+    <div class="kpis" id="kpis"></div>
+  </div>
+  <div class="row filters">
+    <div id="chips" class="row" style="gap:5px"></div>
+    <select id="days">
+      <option value="0">全部时间</option>
+      <option value="30">近 30 天</option>
+      <option value="90">近 90 天</option>
+      <option value="365">近一年</option>
+    </select>
+    <span class="chip tog on" id="tEdges" onclick="tog('edges')">连线</span>
+    <span class="chip tog on" id="tLabels" onclick="tog('labels')">标签</span>
+    <span class="chip tog on" id="tStars" onclick="tog('bgStars')">背景星</span>
+    <span class="chip tog" id="tRel" onclick="tog('relationsOnly')">关系网</span>
+    <div class="search"><input id="q" placeholder="按内容过滤…"></div>
+  </div>
+</div>
+
+<div class="statusbar">
+  <span id="fps">FPS --</span>
+  <span id="ptCount">星 0</span>
+  <span id="dragHint" style="display:none;color:#9cc3ff">拖动中：松开保持位置</span>
+</div>
+
+<div class="side" id="side">
+  <div class="side-head">
+    <div class="tt" id="dTitle">观测台</div>
+    <div class="st" id="dSub">左键拖空白=旋转 · 右键拖=强制旋转 · 滚轮缩放 · 点星看原文 · 左键拖星挪位</div>
+    <div class="tabs" id="tabs">
+      <span class="tab on" data-v="atlas">观测台</span>
+      <span class="tab" data-v="explain">召回解释</span>
+      <span class="tab" data-v="intents">承诺账本</span>
+      <span class="tab" data-v="health">记忆体检</span>
+      <span class="tab" data-v="stats">星海统计</span>
+      <span class="tab" data-v="manage">管理</span>
+    </div>
+  </div>
+  <div id="detail"></div>
+  <div class="foot">
+    <div class="sec-t">近 28 天活动（近似 · 衰减预览不写库）</div>
+    <div class="spark" id="spark"></div>
+    <div class="note" id="note"></div>
+  </div>
+</div>
+
+<div class="tools">
+  <button id="spinBtn" onclick="toggleSpin()">⏸ 自转</button>
+  <button onclick="toggleTour()" id="tourBtn">🎬 巡游</button>
+  <button onclick="resetCam()">⌖ 回中</button>
+  <button onclick="resetPoses()">↺ 复位星星</button>
+  <button onclick="screenshot()">📷 截图</button>
+  <button onclick="runNightly()">🌙 夜巡</button>
+</div>
+<div class="hint">拖动旋转星海 · 滚轮推拉 · 拖星星可摆位 · 点星看原文</div>
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+/* ============================================================
+ * 记忆星海 3D · 完整版
+ * 3D 技法学自 asdfd3/3d-memory-sea（MIT）：斐波那契球面簇布局、
+ * yaw/pitch 双轴旋转投影、透视除法、纵深排序与深度雾。
+ * 本版新增：3D 背景星空（视差闪烁）、星星可拖动（沿相机平面，位置持久化）、
+ * 时间过滤、星海统计页、自动巡游、截图、连线/标签/背景星开关、FPS。
+ * 数据：/atlas + /memory/:id + /stats + /intents + /healthcheck。
+ * ============================================================ */
+
+const KIND_COLOR = {
+  episode: [110, 168, 255], fact: [52, 227, 176], preference: [255, 180, 94],
+  relation: [255, 125, 156], skill: [181, 140, 255], digest: [255, 215, 110],
+  hypothesis: [147, 164, 189], insight: [255, 240, 150],
+};
+const KIND_NAME = { episode:'事件', fact:'事实', preference:'偏好', relation:'关系', skill:'技能', digest:'元记忆', hypothesis:'猜想', insight:'洞察' };
+const ET_RGB = [111, 216, 232];
+const FOCAL = 620;
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const $ = s => document.querySelector(s);
+let POINTS = [], EDGES = [];
+let P_BY_ID = new Map();   // id→点，边/排序等热路径用（避免每帧 pos.get）
+let RANKED = [];           // 按 id 哈希排序的稳定采样顺序（防 LOD 闪烁）
+let BG_STARS = [], METEORS = [];
+let yaw = 0.6, pitch = -0.2, dist = 900;
+let autoSpin = true, tour = false;
+let dragging = null;
+let hoveredId = null, selectedId = null;
+let linkSel = null;   // 联想链：{from, ids:Set, ring:[], born} —— 点星后沿共现实体点亮邻居
+let kindFilter = '', query = '', days = 0;
+let show = { edges: true, labels: true, bgStars: true, relationsOnly: false };
+let ATLAS = null;
+let moved = 0;
+const poses = (() => { try { return JSON.parse(localStorage.getItem('dafenyu-poses') || '{}'); } catch { return {}; } })();
+let poseSaveT = null;
+
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+
+/* 光晕精灵缓存：径向渐变每帧创建 600+ 次是卡顿元凶（尤其放大后半径无上限）。
+   改成每种颜色预渲染一次 128px 精灵，之后只做 drawImage 缩放。 */
+const GLOW_CACHE = new Map();
+const DOT_CACHE = new Map();
+function dotSprite(rgbStr) {
+  let c = DOT_CACHE.get(rgbStr);
+  if (c) return c;
+  c = document.createElement('canvas');
+  c.width = c.height = 32;
+  const g = c.getContext('2d');
+  g.fillStyle = `rgb(${rgbStr})`;
+  g.beginPath(); g.arc(16, 16, 15, 0, Math.PI * 2); g.fill();
+  DOT_CACHE.set(rgbStr, c);
+  return c;
+}
+function glowSprite(rgbStr) {
+  let c = GLOW_CACHE.get(rgbStr);
+  if (c) return c;
+  c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grad.addColorStop(0, `rgba(${rgbStr},0.30)`);
+  grad.addColorStop(0.45, `rgba(${rgbStr},0.10)`);
+  grad.addColorStop(1, `rgba(${rgbStr},0)`);
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 128, 128);
+  GLOW_CACHE.set(rgbStr, c);
+  return c;
+}
+let lowPerf = false, lowStreak = 0, frameMs = 0, slowStreak = 0, lastDraw = 0;   // 自适应画质/帧率
+let curDpr = 1.25, lastFrameAt = 0, frameErrShown = false;
+function resize() {
+  const dpr = Math.min(lowPerf ? 1 : 1.25, devicePixelRatio || 1);   // 默认 1.25 平衡清晰度与 overdraw
+  curDpr = dpr;
+  cv.width = Math.floor(innerWidth * dpr);
+  cv.height = Math.floor(innerHeight * dpr);
+  cv.style.width = innerWidth + 'px'; cv.style.height = innerHeight + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+
+function hash(str) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+  return h >>> 0;
+}
+const rand = s => (hash(String(s)) % 100000) / 100000;
+const nowSec = () => performance.now() / 1000;
+
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 3400);
+}
+const esc = s => String(s == null ? '' : s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+/* 鉴权：服务端开了 token 时，面板自动带 Bearer；401 时提示输入一次并存 localStorage。
+   不引入登录页——本机面板保持"打开即用"，只有开了鉴权才多问一句。 */
+const _rawFetch = window.fetch.bind(window);
+window.fetch = async (input, init = {}) => {
+  const url = typeof input === 'string' ? input : (input && input.url) || '';
+  const sameOrigin = url.startsWith('/') || url.startsWith(location.origin);
+  const tk = localStorage.getItem('mindsea-token') || '';
+  const send = (token) => {
+    const h = new Headers(init.headers || {});
+    if (token) h.set('Authorization', 'Bearer ' + token);
+    return _rawFetch(input, { ...init, headers: h });
+  };
+  let res = await send(tk);
+  if (res.status === 401 && sameOrigin) {
+    const entered = prompt('记忆服务已开启鉴权，请输入访问 token（留空取消）：');
+    if (entered && entered.trim()) {
+      localStorage.setItem('mindsea-token', entered.trim());
+      res = await send(entered.trim());
+    }
+  }
+  return res;
+};
+
+/* ---------------- 数据 ---------------- */
+async function load() {
+  try {
+    const r = await fetch('/atlas?limit=3000' + (days ? '&days=' + days : ''));
+    const { status, data } = await r.json();
+    if (status !== 'ok') return;
+    ATLAS = data;
+    applyData(data);
+  } catch { /* 引擎未启动时保持画面 */ }
+}
+
+function applyData(A) {
+  /* v1.4.4 经典布局：球面分簇（每类一簇，簇内球形分布） */
+  const kinds = Object.keys(A.stats.byKind || {});
+  const centers = new Map();
+  const KN = Math.max(1, kinds.length);
+  kinds.forEach((kind, i) => {
+    const y = kinds.length === 1 ? 0 : 1 - (i / (kinds.length - 1)) * 2;
+    const ring = Math.sqrt(Math.max(0, 1 - y * y));
+    const phi = i * Math.PI * (3 - Math.sqrt(5)) + rand(kind) * 0.6;
+    const radius = 280 + rand(kind + 'r') * 220;
+    centers.set(kind, {
+      x: Math.cos(phi) * ring * radius,
+      y: y * radius * 0.72,
+      z: Math.sin(phi) * ring * radius,
+    });
+  });
+
+  const mems = A.nodes.filter(n => n.type === 'memory');
+  const prevById = new Map(POINTS.map(p => [p.id, p]));
+  const next = [];
+  for (const n of mems) {
+    const prev = prevById.get(n.id);
+    const pose = poses[n.id];
+    const c = centers.get(n.kind) || { x: 0, y: 0, z: 0 };
+    if (prev) {
+      next.push(Object.assign(prev, {
+        label: n.label, kind: n.kind, category: n.category, retention: n.retention,
+        importance: n.importance, hits: n.hits, pin: n.pin, memId: n.memId,
+        entities: n.entities || [], owner: n.owner, visibility: n.visibility,
+      }));
+      continue;
+    }
+    const a = rand(n.memId + 'a') * Math.PI * 2;
+    const b = Math.acos(2 * rand(n.memId + 'b') - 1);
+    const rr = 15 + Math.pow(rand(n.memId + 'r'), 0.62) * 135;
+    const base = {
+      id: n.id, t: 'mem', memId: n.memId, label: n.label, kind: n.kind,
+      category: n.category, retention: n.retention, importance: n.importance,
+      hits: n.hits, pin: n.pin, entities: n.entities || [], owner: n.owner,
+      visibility: n.visibility, created_at: n.created_at,
+      x: c.x + Math.sin(b) * Math.cos(a) * rr,
+      y: c.y + Math.cos(b) * rr * 0.74,
+      z: c.z + Math.sin(b) * Math.sin(a) * rr,
+      phase: rand(n.memId + 'p') * Math.PI * 2,
+      radius: 1.1 + Math.min(2.4, (1 + n.hits * 0.45) * 0.55) + n.importance * 1.0,
+    };
+    if (pose) { base.x = pose.x; base.y = pose.y; base.z = pose.z; }
+    next.push(base);
+  }
+
+  /* 实体节点：成员坐标均值 */
+  const agg = new Map();
+  for (const p of next) {
+    if (p.t !== 'mem') continue;
+    for (const e of p.entities || []) {
+      const g = agg.get(e) || { n: 0, x: 0, y: 0, z: 0 };
+      g.n++; g.x += p.x; g.y += p.y; g.z += p.z;
+      agg.set(e, g);
+    }
+  }
+  for (const [name, g] of agg) {
+    const id = 'e:' + name;
+    const prev = prevById.get(id);
+    const pose = poses[id];
+    let x = g.x / g.n * 1.3, y = g.y / g.n * 1.3, z = g.z / g.n * 1.3;
+    if (pose) { x = pose.x; y = pose.y; z = pose.z; }
+    if (prev) {
+      Object.assign(prev, { label: name, weight: g.n, x, y, z });
+      next.push(prev);
+    } else {
+      next.push({
+        id, t: 'ent', label: name, weight: g.n, kind: 'entity',
+        x, y, z,
+        phase: rand(id + 'p') * Math.PI * 2,
+        radius: 2 + Math.min(4.5, Math.sqrt(g.n) * 1.2),
+      });
+    }
+  }
+  POINTS = next;
+
+  P_BY_ID = new Map(POINTS.map(p => [p.id, p]));
+  for (const p of POINTS) p._rank = hash(p.id || '');
+  RANKED = POINTS.slice().sort((a, b) => a._rank - b._rank);
+  const ids = new Set(POINTS.map(p => p.id));
+  EDGES = A.edges.filter(e => ids.has(e.s) && ids.has(e.t)).map(e => ({
+    ...e, flow: Math.random(), flowSpd: 0.0009 + Math.random() * 0.0016,
+  }));
+
+  if (!BG_STARS.length) {
+    const TINTS = [null, null, null, '#9cc3ff', '#ffd76e', '#ffb4c8', '#a8ffe0'];
+    BG_STARS = Array.from({ length: 1800 }, (_, i) => {
+      /* 前 620 颗聚成一条斜贯天空的银河带，其余漫天分布；大小/亮度分档制造层次 */
+      const band = i < 620;
+      const a = rand('bga' + i) * Math.PI * 2;
+      const b = band
+        ? (Math.PI / 2) + (rand('bgb' + i) - 0.5) * 0.3
+        : Math.acos(2 * rand('bgb' + i) - 1);
+      const rr = 1400 + rand('bgr' + i) * 1500;
+      const tv = rand('btc' + i);
+      return {
+        x: Math.sin(b) * Math.cos(a) * rr,
+        y: Math.cos(b) * rr,
+        z: Math.sin(b) * Math.sin(a) * rr,
+        r: (band ? 0.5 : 0.55) + Math.pow(rand('br' + i), 1.5) * (band ? 2.0 : 3.1),
+        ph: rand('bp' + i) * Math.PI * 2,
+        sp: 0.3 + rand('bs' + i) * 1.4,
+        tint: TINTS[Math.floor(tv * TINTS.length)],
+      };
+    });
+  }
+
+  renderKpis(A.stats);
+  renderChips(A.stats.byKind || {});
+  if (!selectedId && currentView === 'atlas') renderSide(A);   // 别把用户正在看的页签刷掉
+}
+
+function renderKpis(st) {
+  $('#kpis').innerHTML =
+    `<span class="kpi"><b>${st.total}</b>记忆</span>` +
+    `<span class="kpi"><b>${st.entities}</b>实体</span>` +
+    `<span class="kpi"><b>${st.relations}</b>关系</span>` +
+    `<span class="kpi"><b>${Math.round((st.avgRetention || 0) * 100)}%</b>平均留存</span>` +
+    `<span class="kpi"><b>${st.byCategory?.core || 0}</b>核心</span>` +
+    `<span class="kpi"><b>${st.byCategory?.fading || 0}</b>淡忘中</span>`;
+}
+function renderChips(byKind) {
+  const chips = [['', '全部', '#9db4dd'],
+    ...Object.entries(byKind).map(([k, n]) => [k, KIND_NAME[k] || k, `rgb(${KIND_COLOR[k].join(',')})`])];
+  $('#chips').innerHTML = chips.map(([k, name, c]) =>
+    `<span class="chip ${kindFilter === k ? 'on' : ''}" data-k="${k}"><i style="background:${c}"></i>${name}</span>`).join('');
+}
+async function resetState() {
+  if (!confirm('把当前情绪状态重置回基线？')) return;
+  await fetch('/state', { method: 'DELETE' });
+  toast('状态已重置');
+  load();
+}
+function renderSide(A) {
+  $('#spark').innerHTML = (A.heat || []).map(h =>
+    `<i style="height:${Math.max(8, Math.min(100, (h.created + h.recalled) * 26))}%;opacity:${h.created + h.recalled ? 1 : .3}"></i>`).join('');
+  $('#note').textContent = A.note || '';
+  $('#dTitle').textContent = '观测台';
+  $('#dSub').textContent = '左键拖空白=旋转 · 右键拖=强制旋转 · 滚轮缩放 · 点星看原文 · 左键拖星挪位';
+  const top = (A.mostRecalled || []).slice(0, 6);
+  /* L4 状态卡：实时情绪（可重置） */
+  fetch('/state').then(r => r.json()).then(({ data: st }) => {
+    const el = document.getElementById('stateCard');
+    if (el) el.innerHTML =
+      `<div class="card"><div class="t">当前状态：${esc(st.label)}</div>
+       <div class="m"><em>亲密 ${st.dims.intimacy}</em><em>压力 ${st.dims.stress}</em><em>精力 ${st.dims.energy}</em>
+       <em>话量 ${st.tendencies['话量']}</em><em>黏人 ${st.tendencies['黏人度']}</em></div>
+       <div class="mg-btns"><button onclick="resetState()">重置状态</button></div></div>`;
+  }).catch(() => { });
+  $('#detail').innerHTML =
+    '<div id="stateCard"><div style="color:var(--dim2);font-size:12px;padding:4px 0">状态读取中…</div></div>' +
+    (top.length
+      ? '<div class="sec-t">最常被想起</div>'
+      : '<div style="color:var(--dim2);font-size:12px;padding:6px 0">记忆还很少，去和她说说话吧</div>') +
+    top.map(m => `<div class="card" onclick="focusMem('${m.id}')">
+      <div class="t">${esc(m.label)}</div>
+      <div class="m"><em>${KIND_NAME[m.kind] || m.kind}</em><em>被想起 ${m.hits} 次</em><em>留存 ${Math.round(m.retention * 100)}%</em></div>
+      <div class="bar"><i style="width:${Math.round(m.retention * 100)}%"></i></div>
+    </div>`).join('');
+}
+
+/* ---------------- 3D 投影 ---------------- */
+/* 每帧旋转缓存：原来每颗星都重算 4 次 sin/cos（2197 星 ≈ 8800 次/帧） */
+let ROT = { cy: 1, sy: 0, cp: 1, sp: 0 };
+function refreshRot() {
+  ROT = { cy: Math.cos(yaw), sy: Math.sin(yaw), cp: Math.cos(pitch), sp: Math.sin(pitch) };
+}
+/* 漂移每帧更新：之前 120ms 节流会让星星微跳（闪），这点三角开销换稳定值得 */
+function refreshDrift(t) {
+  if (reduceMotion) return;
+  for (const p of POINTS) {
+    p._dx = Math.sin(t / 3200 + p.phase) * 3;
+    p._dy = Math.cos(t / 4100 + p.phase) * 2.5;
+    p._dz = Math.sin(t / 2700 + p.phase * 1.3) * 3;
+  }
+}
+
+/* 世界坐标 → 屏幕（轨道环/主星/点共用同一投影） */
+function projectWorld(wx, wy, wz) {
+  const cy = ROT.cy, sy = ROT.sy, cp = ROT.cp, sp = ROT.sp;
+  const x1 = wx * cy - wz * sy;
+  const z1 = wx * sy + wz * cy;
+  const y1 = wy * cp - z1 * sp;
+  const z2 = wy * sp + z1 * cp;
+  const depth = Math.max(150, dist + z2);
+  const f = FOCAL / depth;
+  /* 场景中心左移：右侧有 330px 侧栏，否则最右边的星盘会被挡住 */
+  const CX = innerWidth / 2 - (innerWidth > 980 ? 120 : 0);
+  const CY = innerHeight / 2;
+  return { x: CX + x1 * f, y: CY + y1 * f, f, depth };
+}
+
+/* 点 → 屏幕：静态世界坐标 + 漂移 */
+function project(p) {
+  return projectWorld(p.x + (p._dx || 0), p.y + (p._dy || 0), p.z + (p._dz || 0));
+}
+
+/* ---------------- 主循环 ---------------- */
+const pos = new Map();
+let frames = 0, fpsT = performance.now(), fps = 0;
+
+function frame(tms) {
+  lastFrameAt = performance.now();
+  try { frameBody(tms); }
+  catch (e) {
+    /* 渲染异常绝不能停掉循环——否则画布永远空白，只能靠反复刷新碰运气 */
+    if (!frameErrShown) {
+      frameErrShown = true;
+      const b = document.getElementById('errBox');
+      if (b) { b.style.display = 'block'; b.textContent = '渲染错误：' + (e && e.message ? e.message : e); }
+    }
+  } finally {
+    requestAnimationFrame(frame);
+  }
+}
+
+function frameBody(tms) {
+  const t = tms || performance.now();
+  const t0 = performance.now();
+  /* 尺寸自检：webview 首次打开时 innerWidth/Height 可能为 0，画布会一直是 0×0 */
+  const wantW = Math.floor(innerWidth * curDpr), wantH = Math.floor(innerHeight * curDpr);
+  if (!cv.width || !cv.height || Math.abs(cv.width - wantW) > 2 || Math.abs(cv.height - wantH) > 2) {
+    resize();
+    if (!cv.width || !cv.height) return;
+  }
+  refreshRot();
+  refreshDrift(t);
+  if (t - fpsT >= 500) {
+    fps = Math.round(frames * 1000 / (t - fpsT));
+    frames = 0; fpsT = t;
+    $('#fps').textContent = 'FPS ' + fps;
+    $('#ptCount').textContent = '星 ' + POINTS.length;
+    /* 低性能设备自动降采样：连续两次低于 24fps 才降（避免首帧抖动误判），DPR 1.5→1 */
+    if (!lowPerf) {
+      if (fps > 0 && fps < 24) { lowStreak++; if (lowStreak >= 2) { lowPerf = true; resize(); } }
+      else lowStreak = 0;
+    }
+  }
+
+  /* 低性能保护：持续慢帧时降 DPR 并把绘制压到 ~30fps（拖拽时不限，保证跟手） */
+  if (lowPerf && !dragging && t - lastDraw < 30) return;
+  lastDraw = t;
+  frames++;
+
+  if (tour && !dragging) {
+    yaw += 0.0011;
+    pitch = -0.1 + Math.sin(t / 7000) * 0.32;
+    dist = 780 + Math.sin(t / 9000) * 140;
+  } else if (autoSpin && !dragging) {
+    yaw += 0.00022;
+  }
+
+  ctx.clearRect(0, 0, innerWidth, innerHeight);
+  const bgGrad = ctx.createRadialGradient(innerWidth * 0.6, innerHeight * 0.35, 0, innerWidth * 0.5, innerHeight * 0.5, Math.max(innerWidth, innerHeight) * 0.75);
+  bgGrad.addColorStop(0, '#0a1020');
+  bgGrad.addColorStop(0.55, '#060a14');
+  bgGrad.addColorStop(1, '#03050b');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, innerWidth, innerHeight);
+
+  const visible = POINTS.filter(p =>
+    (show.relationsOnly ? p.t === 'ent' : true) &&
+    (!kindFilter || p.t === 'ent' || p.kind === kindFilter) &&
+    (!query || (p.label || '').toLowerCase().includes(query)));
+
+  pos.clear();
+  for (const p of visible) {
+    const pr = project(p, t);
+    p._x = pr.x; p._y = pr.y; p._f = pr.f; p._depth = pr.depth;
+    pos.set(p.id, pr);
+  }
+
+  /* 流星 */
+  if (!reduceMotion) {
+    if (!METEORS.length || t - METEORS[METEORS.length - 1].born > (22 + Math.random() * 20) * 1000) {
+      METEORS.push({ born: t, x: innerWidth * (0.15 + Math.random() * 0.7), y: innerHeight * (0.02 + Math.random() * 0.25),
+        dx: (Math.random() < 0.5 ? -1 : 1) * (260 + Math.random() * 200), dy: 190 + Math.random() * 130, life: 0 });
+      if (METEORS.length > 3) METEORS.shift();
+    }
+  }
+
+  /* 3D 背景星空：按「颜色 + 亮度档」批量画（900 次 fill → 十几个） */
+  if (show.bgStars) {
+    const cy = Math.cos(yaw), sy = Math.sin(yaw);
+    const cp = Math.cos(pitch), sp = Math.sin(pitch);
+    const bgBuckets = new Map();
+    for (const s of BG_STARS) {
+      const x1 = s.x * cy - s.z * sy;
+      const z1 = s.x * sy + s.z * cy;
+      const y1 = s.y * cp - z1 * sp;
+      const z2 = s.y * sp + z1 * cp;
+      const depth = dist + z2;
+      if (depth < 260) continue;
+      const f = FOCAL / depth;
+      const a = reduceMotion ? 0.4 : 0.55 + 0.3 * Math.abs(Math.sin(t / 2200 * s.sp + s.ph));
+      const ab = Math.min(3, Math.floor(a * 4));
+      const key = (s.tint || 'd') + '|' + ab;
+      let b = bgBuckets.get(key);
+      if (!b) {
+        b = {
+          style: s.tint ? hexA(s.tint, [0.38, 0.52, 0.68, 0.92][ab]) : `rgba(190,212,255,${[0.38, 0.52, 0.68, 0.92][ab]})`,
+          pts: [],
+        };
+        bgBuckets.set(key, b);
+      }
+      b.pts.push(innerWidth / 2 + x1 * f, innerHeight / 2 + y1 * f, Math.max(0.55, s.r * f * 1.85));
+    }
+    for (const b of bgBuckets.values()) {
+      ctx.fillStyle = b.style;
+      ctx.beginPath();
+      for (let i = 0; i < b.pts.length; i += 3) {
+        ctx.moveTo(b.pts[i] + b.pts[i + 2], b.pts[i + 1]);
+        ctx.arc(b.pts[i], b.pts[i + 1], b.pts[i + 2], 0, 7);
+      }
+      ctx.fill();
+    }
+  }
+
+  const order = visible.slice().sort((a, b) => b._depth - a._depth);
+  const idx = new Set(visible.map(p => p.id));
+
+  /* 边：静态淡线 + 沿线的“传输光包”（亮点 + 拖尾），让记忆之间的流动可见 */
+  if ((show.edges || hoveredId || selectedId) && EDGES.length) {
+    const eCap = show.edges ? (fps < 28 ? 700 : 1400) : 40;
+    const buckets = new Map();
+    const flowPts = [];            // [x, y, r] 传输光包
+    const trailPts = [];           // 拖尾点
+    const step = Math.max(1, Math.ceil(EDGES.length / eCap));
+    let drawn = 0;
+    for (let ei = 0; ei < EDGES.length; ei++) {
+      const e = EDGES[ei];
+      if (drawn >= eCap) break;
+      if (!idx.has(e.s) || !idx.has(e.t)) continue;
+      const pa = P_BY_ID.get(e.s), pb = P_BY_ID.get(e.t);
+      if (!pa || !pb || pa._x === undefined || pb._x === undefined) continue;
+      const lit = hoveredId === e.s || hoveredId === e.t || selectedId === e.s || selectedId === e.t;
+      if (!lit && ei % step !== 0) continue;          // 均匀取样，避免只画前几百条
+      if (!show.edges && !lit) continue;
+      const near = (pa.f + pb.f) * 0.5;
+      const gold = e.w === 2;
+      const tier = lit ? 'lit' : near > 0.95 ? 2 : near > 0.6 ? 1 : 0;
+      const key = tier + '|' + (gold ? 'g' : 'b');
+      let b = buckets.get(key);
+      if (!b) {
+        const baseAlpha = tier === 'lit' ? 0.5 : [0.10, 0.16, 0.24][tier];
+        b = {
+          style: gold ? `rgba(255,215,110,${baseAlpha})` : `rgba(150,205,255,${baseAlpha})`,
+          width: (gold ? 1.35 : 0.85) * (tier === 'lit' ? 1.7 : 1),
+          pts: [],
+        };
+        buckets.set(key, b);
+      }
+      b.pts.push(pa._x, pa._y, pb._x, pb._y);
+
+      /* 光包：沿边流动，带 2 段拖尾 */
+      if (!reduceMotion) {
+        e.flow = (e.flow + e.flowSpd) % 1;
+        const rr = Math.max(0.9, 1.45 * near);
+        for (const [back, scale, list] of [[0, 1, flowPts], [0.045, 0.6, trailPts], [0.09, 0.35, trailPts]]) {
+          const f = (e.flow - back + 1) % 1;
+          list.push(pa._x + (pb._x - pa._x) * f, pa._y + (pb._y - pa._y) * f, rr * scale);
+        }
+      }
+      drawn++;
+    }
+    for (const b of buckets.values()) {
+      ctx.strokeStyle = b.style;
+      ctx.lineWidth = b.width;
+      ctx.beginPath();
+      for (let i = 0; i < b.pts.length; i += 4) {
+        ctx.moveTo(b.pts[i], b.pts[i + 1]);
+        ctx.lineTo(b.pts[i + 2], b.pts[i + 3]);
+      }
+      ctx.stroke();
+    }
+    /* 拖尾（暗）与光包（亮 + 加色辉光） */
+    if (trailPts.length) {
+      ctx.fillStyle = 'rgba(160,215,255,0.30)';
+      ctx.beginPath();
+      for (let i = 0; i < trailPts.length; i += 3) {
+        ctx.moveTo(trailPts[i] + trailPts[i + 2], trailPts[i + 1]);
+        ctx.arc(trailPts[i], trailPts[i + 1], trailPts[i + 2], 0, 7);
+      }
+      ctx.fill();
+    }
+    if (flowPts.length) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = 'rgba(120,200,255,0.35)';
+      ctx.beginPath();
+      for (let i = 0; i < flowPts.length; i += 3) {
+        ctx.moveTo(flowPts[i] + flowPts[i + 2] * 3.0, flowPts[i + 1]);
+        ctx.arc(flowPts[i], flowPts[i + 1], flowPts[i + 2] * 3.0, 0, 7);
+      }
+      ctx.fill();
+      ctx.fillStyle = 'rgba(225,245,255,0.95)';
+      ctx.beginPath();
+      for (let i = 0; i < flowPts.length; i += 3) {
+        ctx.moveTo(flowPts[i] + flowPts[i + 2], flowPts[i + 1]);
+        ctx.arc(flowPts[i], flowPts[i + 1], flowPts[i + 2], 0, 7);
+      }
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  /* 星盘分区：质心 + 外接半径 + 名称（让结构一眼可读） */
+  if (show.labels) {
+    const groups = new Map();
+    for (const p of visible) {
+      if (p.t !== 'mem' || p._x === undefined) continue;
+      const g = groups.get(p.kind) || { x: 0, y: 0, n: 0, near: 0, pts: [] };
+      g.x += p._x; g.y += p._y; g.n += 1; g.near = Math.max(g.near, p._f);
+      g.pts.push(p._x, p._y);
+      groups.set(p.kind, g);
+    }
+    ctx.font = '600 12.5px system-ui, "PingFang SC", "Microsoft YaHei", sans-serif';
+    ctx.textAlign = 'center';
+    for (const [kind, g] of groups) {
+      if (g.n < 6) continue;
+      const cx = g.x / g.n, cy = g.y / g.n;
+      let rad = 0;
+      for (let i = 0; i < g.pts.length; i += 2) {
+        const dx = g.pts[i] - cx, dy = g.pts[i + 1] - cy;
+        const d = dx * dx + dy * dy;
+        if (d > rad) rad = d;
+      }
+      /* 名称 + 数量（放在星系核上方；轨道环已表示边界，不再重复画圈） */
+      ctx.globalAlpha = Math.min(0.8, 0.35 + g.near * 0.3);
+      ctx.fillStyle = '#b6c8e8';
+      ctx.fillText(`${KIND_NAME[kind] || kind} · ${g.n}`, cx, cy - 19);
+    }
+    ctx.globalAlpha = 1;
+    ctx.textAlign = 'left';
+  }
+
+  /* 联想链渲染：从选中星向邻居拉光线，邻居与实体锚点画光圈，6 秒渐隐 */
+  if (linkSel) {
+    const age = (t - linkSel.born) / 1000;
+    const fade = 1 - age / 6;
+    const from = pos.get(linkSel.from);
+    if (fade <= 0 || !from) { linkSel = null; }
+    else {
+      const alpha = 0.5 * fade * (reduceMotion ? 1 : 0.85 + 0.15 * Math.sin(t / 300));
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.lineWidth = 1.1;
+      ctx.strokeStyle = `rgba(150,195,255,${alpha.toFixed(3)})`;
+      ctx.beginPath();
+      let drawn = 0;
+      for (const id of linkSel.ids) {
+        if (drawn >= 150) break;          // 密集星团限流：最多 150 条光线
+        const pr = pos.get(id);
+        if (!pr) continue;
+        drawn++;
+        ctx.moveTo(from.x, from.y);
+        ctx.lineTo(pr.x, pr.y);
+      }
+      ctx.stroke();
+      ctx.lineWidth = 1.6;
+      for (const id of linkSel.ring) {
+        const pr = pos.get(id);
+        if (!pr) continue;
+        ctx.beginPath();
+        ctx.arc(pr.x, pr.y, Math.max(6, 9 * pr.f), 0, 7);
+        ctx.strokeStyle = linkSel.ids.has(id)
+          ? `rgba(150,195,255,${alpha.toFixed(3)})`
+          : `rgba(255,215,110,${(alpha * 0.9).toFixed(3)})`;
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+
+  /* 点：LOD。性能策略：
+     ① 普通星点按「颜色 + 透明度档」收集后批量 fill（2190 次 fill → 几十次）
+     ② 光晕只给核心/钉住/选中（普通星不画大光晕）
+     ③ 核心星的圆环与四芒星芒合并成两条路径，一次 stroke */
+  let glowBudget = fps < 30 ? 60 : fps < 45 ? 140 : 280;
+  let glows = 0;
+  let glowArea = 0;
+  const GLOW_AREA_CAP = fps < 30 ? 80000 : fps < 45 ? 160000 : 300000;
+  const W = innerWidth, H = innerHeight, MARGIN = 140;
+  const rgb = c => `rgb(${c[0]},${c[1]},${c[2]})`;
+  /* LOD 预算：拉远时星点重叠严重，只画优先级高的（核心/钉住/留存高）+ 最近的，
+     拉近后视野裁剪会自然减少数量，再全画 */
+  const drawCap = 2400;
+  let renderList = order;
+  if (order.length > drawCap) {
+    /* 稳定抽样：按 id 哈希（RANKED，applyData 时排好）取固定子集。
+       之前按下标取会随深度重排每帧换人，导致闪烁——这是"闪来闪去"的根因。 */
+    const prio = POINTS.filter((p) => p.pin || p.id === selectedId || p.id === hoveredId);
+    const prioIds = new Set(prio.map((p) => p.id));
+    const rest = [];
+    const need = Math.max(0, drawCap - prio.length);
+    for (const p of RANKED) {
+      if (prioIds.has(p.id)) continue;
+      rest.push(p);
+      if (rest.length >= need) break;
+    }
+    renderList = prio.concat(rest);
+  }
+  const ptBuckets = new Map();   // key: 颜色索引|透明度档 → {style, alpha, pts:[]}
+  const ringPts = [];            // 核心星圆环（一次 stroke）
+  const flarePts = [];           // 四芒星芒（一次 stroke）
+  const labels = [];             // 标签延后统一画
+  for (const p of renderList) {
+    const pr = pos.get(p.id);
+    if (!pr) continue;
+    /* 视野裁剪：放大后大半星在屏幕外，画它们纯属浪费 */
+    if (pr.x < -MARGIN || pr.x > W + MARGIN || pr.y < -MARGIN || pr.y > H + MARGIN) continue;
+    const isSel = selectedId === p.id, isHov = hoveredId === p.id;
+    const col = p.t === 'ent' ? ET_RGB : (KIND_COLOR[p.kind] || KIND_COLOR.episode);
+    const ret = p.t === 'ent' ? 1 : (p.retention != null ? p.retention : 1);
+    const dimQ = query && !(p.label || '').toLowerCase().includes(query);
+    /* 半径加硬上限：缩放再近也不会出现"巨大光斑" */
+    const base = Math.min(9, Math.max(0.9, p.radius * pr.f * 1.35 * (isSel || isHov ? 1.9 : 1)));
+    const near = pr.f;
+
+    const alpha = dimQ ? 0.06 : Math.min(1, (0.2 + near * 0.95) * (0.35 + 0.65 * ret));
+    const aBucket = isSel || isHov ? 5 : Math.min(4, Math.floor(alpha * 5));   // 0..5
+    /* 亚像素小星直接跳过；<1.6px 用矩形（肉眼就是点），其余走批量 arc */
+    const rr = Math.max(0.75, base);
+    if (rr < 0.9 && alpha < 0.12 && !isSel && !isHov && !p.pin) continue;
+    const key = col[0] + ',' + col[1] + ',' + col[2] + '|' + aBucket;
+    let bucket = ptBuckets.get(key);
+    if (!bucket) {
+      bucket = { style: rgb(col), alpha: [0.1, 0.3, 0.5, 0.7, 0.85, 1][aBucket], pts: [], rects: [] };
+      ptBuckets.set(key, bucket);
+    }
+    if (rr < 1.6) bucket.rects.push(pr.x - rr, pr.y - rr, rr * 2);
+    else bucket.pts.push(pr.x, pr.y, rr);
+
+    const wantGlow = glows < glowBudget && (isSel || isHov || p.pin || (p.category === 'core' && near > 1));
+    if (wantGlow) {
+      const gr = Math.min(base * 4.5, 64);
+      if (glowArea + gr * gr <= GLOW_AREA_CAP) {
+        glows++;
+        glowArea += gr * gr;
+        ctx.globalAlpha = alpha;
+        ctx.drawImage(glowSprite(col.join(',')), pr.x - gr, pr.y - gr, gr * 2, gr * 2);
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    if (p.pin) {
+      ringPts.push(pr.x, pr.y, base * 2.5);
+      const flare = Math.min(72, base * (5.2 + Math.sin(t / 500 + (p.phase || 0)) * 0.8));
+      flarePts.push(pr.x, pr.y, flare);
+    }
+
+    if (show.labels && labels.length < 14 && (isSel || isHov || p.pin || (p.t === 'ent' && p.weight >= 8 && near > 1.0))) {
+      const lx = pr.x, ly = pr.y - base - 5;
+      const w = Math.min(150, p.label.length * 11 + 6);
+      const box = [lx - w / 2, ly - 12, w, 15];
+      /* 简单防重叠：与已画标签相交就跳过，避免一片文字糊在一起 */
+      const clash = labels.some((l) => !(box[0] > l.box[0] + l.box[2] || box[0] + box[2] < l.box[0]
+        || box[1] > l.box[1] + l.box[3] || box[1] + box[3] < l.box[1]));
+      if (!clash) labels.push({ x: lx, y: ly, text: p.label, sel: isSel, alpha: 0.4 + 0.6 * ret, ent: p.t === 'entity', box });
+    }
+  }
+  /* 批量画星点 */
+  for (const b of ptBuckets.values()) {
+    ctx.globalAlpha = b.alpha;
+    ctx.fillStyle = b.style;
+    if (b.rects.length) {
+      ctx.beginPath();
+      for (let i = 0; i < b.rects.length; i += 3) ctx.rect(b.rects[i], b.rects[i + 1], b.rects[i + 2], b.rects[i + 2]);
+      ctx.fill();
+    }
+    if (b.pts.length) {
+      ctx.beginPath();
+      for (let i = 0; i < b.pts.length; i += 3) {
+        ctx.moveTo(b.pts[i] + b.pts[i + 2], b.pts[i + 1]);
+        ctx.arc(b.pts[i], b.pts[i + 1], b.pts[i + 2], 0, Math.PI * 2);
+      }
+      ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+  /* 核心星圆环（一次 stroke） */
+  if (ringPts.length) {
+    ctx.strokeStyle = `rgba(255,215,110,${(0.6 + 0.2 * Math.sin(t / 600)).toFixed(2)})`;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    for (let i = 0; i < ringPts.length; i += 3) {
+      ctx.moveTo(ringPts[i] + ringPts[i + 2], ringPts[i + 1]);
+      ctx.arc(ringPts[i], ringPts[i + 1], ringPts[i + 2], 0, Math.PI * 2);
+    }
+    ctx.stroke();
+  }
+  /* 四芒星芒（一次 lighter stroke） */
+  if (flarePts.length) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = `rgba(255,225,150,${(0.32 + 0.12 * Math.sin(t / 700)).toFixed(2)})`;
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    for (let i = 0; i < flarePts.length; i += 3) {
+      const x = flarePts[i], y = flarePts[i + 1], f = flarePts[i + 2];
+      ctx.moveTo(x - f, y); ctx.lineTo(x + f, y);
+      ctx.moveTo(x, y - f); ctx.lineTo(x, y + f);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+  /* 标签统一画（减少字体/样式切换） */
+  for (const l of labels) {
+    ctx.font = `${l.ent ? 600 : 400} ${l.ent ? 11 : 10.5}px "Segoe UI", "Microsoft YaHei", sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = l.sel ? '#fff' : `rgba(233,238,251,${l.alpha.toFixed(2)})`;
+    ctx.fillText(l.text, l.x, l.y);
+  }
+  ctx.textAlign = 'left';
+
+  /* 悬浮提示卡 */
+  if (hoveredId) {
+    const p = POINTS.find(x => x.id === hoveredId);
+    const pr = p && pos.get(p.id);
+    if (p && pr) {
+      const label = p.label.length > 30 ? p.label.slice(0, 30) + '…' : p.label;
+      ctx.font = '12px "Microsoft YaHei", sans-serif';
+      const w = ctx.measureText(label).width + 18;
+      ctx.fillStyle = 'rgba(8,11,20,.92)';
+      ctx.strokeStyle = 'rgba(125,176,255,.32)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(pr.x + 11, pr.y - 26, w, 25, 7); else ctx.rect(pr.x + 11, pr.y - 26, w, 25);
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#dfe8ff';
+      ctx.fillText(label, pr.x + 19, pr.y - 9);
+    }
+  }
+
+  /* 流星拖尾 */
+  for (let i = METEORS.length - 1; i >= 0; i--) {
+    const m = METEORS[i];
+    m.life += 16;
+    const u = m.life / 900;
+    if (u >= 1) { METEORS.splice(i, 1); continue; }
+    const fade = u < 0.25 ? u / 0.25 : 1 - (u - 0.25) / 0.75;
+    const tx = m.x + m.dx * u, ty = m.y + m.dy * u;
+    const tail = 90;
+    const g = ctx.createLinearGradient(tx, ty, tx - m.dx / Math.hypot(m.dx, m.dy) * tail, ty - m.dy / Math.hypot(m.dx, m.dy) * tail);
+    g.addColorStop(0, `rgba(220,235,255,${0.85 * fade})`);
+    g.addColorStop(1, 'rgba(220,235,255,0)');
+    ctx.strokeStyle = g;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(tx, ty);
+    ctx.lineTo(tx - m.dx / Math.hypot(m.dx, m.dy) * tail, ty - m.dy / Math.hypot(m.dx, m.dy) * tail);
+    ctx.stroke();
+    ctx.beginPath(); ctx.arc(tx, ty, 1.6, 0, 7);
+    ctx.fillStyle = `rgba(240,248,255,${0.9 * fade})`; ctx.fill();
+  }
+
+  /* 暗角 */
+  const vig = ctx.createRadialGradient(innerWidth / 2, innerHeight / 2, Math.min(innerWidth, innerHeight) * 0.38, innerWidth / 2, innerHeight / 2, Math.max(innerWidth, innerHeight) * 0.72);
+  vig.addColorStop(0, 'rgba(0,0,0,0)');
+  vig.addColorStop(1, 'rgba(2,4,9,.5)');
+  ctx.fillStyle = vig;
+  ctx.fillRect(0, 0, innerWidth, innerHeight);
+
+  const cost = performance.now() - t0;
+  frameMs = frameMs ? frameMs * 0.9 + cost * 0.1 : cost;
+  if (!lowPerf) {
+    if (frameMs > 14) { if (++slowStreak > 40) { lowPerf = true; resize(); } }
+    else if (frameMs < 12) slowStreak = 0;
+  }
+}
+const hexA = (hex, a) => {
+  const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${a.toFixed(3)})`;
+};
+
+/* ---------------- 星星拖动（沿相机平面，位置持久化） ---------------- */
+function camBasis() {
+  const cy = Math.cos(yaw), sy = Math.sin(yaw);
+  const cp = Math.cos(pitch), sp = Math.sin(pitch);
+  return {
+    right: [cy, 0, -sy],
+    up: [-sy * sp, cp, -cy * sp],
+  };
+}
+function starDragMove(p, dx, dy, depth) {
+  p._posed = true;   // 拖过的星固定住，不再随星系公转
+  const b = camBasis();
+  const k = depth / FOCAL;
+  const dxw = dx * k, dyw = dy * k;
+  p.x += b.right[0] * dxw + b.up[0] * dyw;
+  p.y += b.right[1] * dxw + b.up[1] * dyw;
+  p.z += b.right[2] * dxw + b.up[2] * dyw;
+}
+function savePose(p) {
+  poses[p.id] = { x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2) };
+  clearTimeout(poseSaveT);
+  poseSaveT = setTimeout(() => {
+    try { localStorage.setItem('dafenyu-poses', JSON.stringify(poses)); } catch { /* 满了就算了 */ }
+  }, 400);
+}
+function resetPoses() {
+  try { localStorage.removeItem('dafenyu-poses'); } catch {}
+  for (const k in poses) delete poses[k];
+  load();
+  toast('星星已复位到自然分布');
+}
+
+/* ---------------- 交互 ---------------- */
+function pick(mx, my) {
+  let best = null, bd = 1e9;
+  for (const p of POINTS) {
+    const pr = pos.get(p.id);
+    if (!pr) continue;
+    /* 命中半径收紧到星星实际大小：星团中心留出"空白"，拖空白才能转星图 */
+    const rr = Math.max(3.5, p.radius * pr.f + 3);
+    const d = (pr.x - mx) ** 2 + (pr.y - my) ** 2;
+    if (d <= rr * rr && d < bd) { best = p; bd = d; }
+  }
+  return best;
+}
+
+cv.addEventListener('contextmenu', e => e.preventDefault());
+cv.addEventListener('pointerdown', e => {
+  moved = 0;
+  /* 左键点星=拖星/选星；右键(或中键)按住=无论落在哪都旋转星图 */
+  const p = e.button === 0 ? pick(e.clientX, e.clientY) : null;
+  if (p) {
+    const pr = pos.get(p.id);
+    dragging = { type: 'star', p, depth: pr ? pr.depth : dist, px: e.clientX, py: e.clientY };
+    cv.classList.add('grabbingStar');
+    $('#dragHint').style.display = 'inline';
+  } else {
+    dragging = { type: 'cam', px: e.clientX, py: e.clientY, sx: e.clientX, sy: e.clientY, yaw0: yaw, pitch0: pitch };
+    cv.classList.add('rotating');
+  }
+  cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointermove', e => {
+  if (dragging) {
+    moved += Math.abs(e.clientX - dragging.px) + Math.abs(e.clientY - dragging.py);
+    if (dragging.type === 'cam') {
+      /* 从按下原点算总位移：高频小步进的鼠标 move 才能累积成完整旋转 */
+      yaw = dragging.yaw0 + (e.clientX - dragging.sx) * 0.0042;
+      pitch = Math.max(-1.25, Math.min(1.25, dragging.pitch0 + (e.clientY - dragging.sy) * 0.0038));
+    } else {
+      const pr = pos.get(dragging.p.id);
+      starDragMove(dragging.p, e.clientX - dragging.px, e.clientY - dragging.py, pr ? pr.depth : dist);
+      savePose(dragging.p);
+    }
+    dragging.px = e.clientX; dragging.py = e.clientY;
+    return;
+  }
+  const p = pick(e.clientX, e.clientY);
+  hoveredId = p ? p.id : null;
+  cv.classList.toggle('pointing', !!p);
+});
+addEventListener('pointerup', e => {
+  if (dragging && dragging.type === 'star' && moved < 6) {
+    selectedId = dragging.p.id;
+    showMemDetail(dragging.p);
+    selectLinks(dragging.p);          // 联想链：点亮共现实体的邻居
+  } else if (dragging && dragging.type === 'cam' && moved < 6) {
+    selectedId = null;                // 点空白处取消选中与联想
+    linkSel = null;
+  }
+  dragging = null;
+  cv.classList.remove('rotating', 'grabbingStar');
+  $('#dragHint').style.display = 'none';
+});
+cv.addEventListener('wheel', e => {
+  e.preventDefault();
+  dist = Math.min(1900, Math.max(300, dist * (e.deltaY < 0 ? 0.9 : 1.1)));
+}, { passive: false });
+
+/* 联想链（借凌的识海）：选中星 → 共现实体的记忆邻居 + 实体锚点——按关系找，不只按字面找 */
+function selectLinks(p) {
+  const es = p.entities || [];
+  if (!es.length) { linkSel = null; return; }
+  const es2 = new Set(es);
+  const ids = new Set();
+  for (const q of POINTS) {
+    if (q.t === 'mem' && q.id !== p.id && (q.entities || []).some((e) => es2.has(e))) ids.add(q.id);
+  }
+  const anchors = POINTS.filter((q) => q.t === 'ent' && es2.has(q.label)).map((q) => q.id);
+  linkSel = ids.size ? { from: p.id, ids, ring: [...ids, ...anchors], born: performance.now() } : null;
+}
+
+function showMemDetail(p) {
+  $('#dTitle').textContent = (KIND_NAME[p.kind] || p.kind) + (p.pin ? ' · 📌 钉住' : '');
+  $('#dSub').textContent = '留存 ' + Math.round((p.retention || 1) * 100) + '% · 被想起 ' + (p.hits || 0) + ' 次';
+  $('#detail').innerHTML = '<div style="color:var(--dim2);font-size:12px">读取原文…</div>';
+  fetch('/memory/' + p.memId).then(r => r.json()).then(({ status, data }) => {
+    $('#detail').innerHTML =
+      `<div class="card"><div class="t">${esc(status === 'ok' ? data.text : p.label)}</div>
+       <div class="m"><em>归属 ${esc(data.owner || p.owner || '-')}</em>
+       <em>${new Date(data.created_at || p.created_at).toLocaleDateString()}</em>
+       <em>${esc(data.visibility || p.visibility || '')}</em>
+       <em>${(data.entities || []).map(esc).join(' · ')}</em></div></div>`;
+  }).catch(() => {
+    $('#detail').innerHTML = `<div class="card"><div class="t">${esc(p.label)}</div></div>`;
+  });
+}
+
+/* ---------------- 页签 ---------------- */
+let currentView = 'atlas';
+$('#tabs').addEventListener('click', e => {
+  const t = e.target.closest('[data-v]');
+  if (!t) return;
+  currentView = t.dataset.v;
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x.dataset.v === currentView));
+  renderView();
+});
+function renderView() {
+  if (currentView === 'atlas') { if (ATLAS) renderSide(ATLAS); return; }
+  if (currentView === 'explain') return renderExplain();
+  if (currentView === 'intents') return renderIntents();
+  if (currentView === 'health') return renderHealth();
+  if (currentView === 'stats') return renderStats();
+  if (currentView === 'manage') return renderManage();
+}
+
+/* P1-7 记忆管理：永久规则 / 列表 / 编辑 / 删除 / 导出（全程审计） */
+let mgQuery = '';
+async function renderManage() {
+  $('#dTitle').textContent = '记忆管理';
+  $('#dSub').textContent = '永久规则 / 查看 / 编辑 / 删除 / 导出 · 全程审计留痕';
+  $('#detail').innerHTML = '<div style="color:var(--dim2);font-size:12px">读取中…</div>';
+  try {
+    const [{ data }, rulesRes] = await Promise.all([
+      fetch('/atlas?limit=1000').then((r) => r.json()),
+      fetch('/rules').then((r) => r.json()).catch(() => null),
+    ]);
+    const rulesRaw = rulesRes?.data?.raw ?? '';
+    let list = (data.nodes || []).filter(n => n.type === 'memory');
+    if (mgQuery) list = list.filter(n => (n.label || '').toLowerCase().includes(mgQuery.toLowerCase()));
+    const rows = list.slice(0, 60).map(n => `
+      <div class="card" data-mid="${n.memId}">
+        <div class="t">${esc(n.label)}</div>
+        <div class="m"><em>${KIND_NAME[n.kind] || n.kind}</em><em>${n.pin ? '📌' : ''}</em><em>留存 ${Math.round((n.retention||1)*100)}%</em></div>
+        <div class="mg-btns">
+          <button onclick="editMem('${n.memId}')">编辑</button>
+          <button onclick="delMem('${n.memId}')">删除</button>
+        </div>
+      </div>`).join('');
+    $('#detail').innerHTML =
+      `<div class="card"><div class="t">⭐ 永久规则（一条一行，# 为注释；最高优先、永不衰减，每次召回置顶注入）</div>
+       <textarea id="rulesTa" style="width:100%;min-height:72px;font:inherit;font-size:12px;background:rgba(255,255,255,.05);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:7px;margin-top:6px">${esc(rulesRaw)}</textarea>
+       <div class="mg-btns"><button onclick="saveRulesTxt()">保存规则</button></div>
+      </div>` +
+      `<div class="rq"><input id="mgq" placeholder="过滤记忆…" value="${esc(mgQuery)}"></div>` +
+      (rows || '<div style="color:var(--dim2);font-size:12px">没有记忆</div>') +
+      `<div class="preview-tag"><button onclick="exportAll()">⬇ 导出全部 JSON</button></div>`;
+    $('#mgq').addEventListener('input', ev => { mgQuery = ev.target.value; renderManage(); });
+  } catch (e) { $('#detail').innerHTML = '<div style="color:var(--bad);font-size:12px">读取失败</div>'; }
+}
+async function saveRulesTxt() {
+  const text = document.getElementById('rulesTa').value;
+  const r = await (await fetch('/rules', { method: 'PUT',
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) })).json();
+  if (r.status === 'ok') toast('规则已保存（' + r.data.count + ' 条，下次召回生效）');
+  else toast('保存失败', 'err');
+}
+async function editMem(id) {
+  const { data: mem } = await (await fetch('/memory/' + id)).json();
+  const card = document.querySelector(`.card[data-mid="${id}"]`);
+  card.innerHTML = `<textarea id="ta-${id}" style="width:100%;min-height:56px;font:inherit;font-size:12px;
+    background:rgba(255,255,255,.05);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:7px">${esc(mem.text)}</textarea>
+    <div class="mg-btns" style="margin-top:6px;display:flex;gap:6px">
+      <button onclick="saveMem('${id}')">保存</button>
+      <button onclick="renderManage()">取消</button>
+    </div>`;
+}
+async function saveMem(id) {
+  const text = document.getElementById('ta-' + id).value;
+  const r = await (await fetch('/memory/' + id, { method: 'PUT',
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) })).json();
+  if (r.status === 'ok') { toast('已保存'); renderManage(); } else toast('保存失败', 'err');
+}
+async function delMem(id) {
+  const r = await (await fetch('/memory/' + id, { method: 'DELETE' })).json();
+  if (r.status === 'ok') { toast('已删除（归档保留，可找回）'); renderManage(); } else toast('删除失败', 'err');
+}
+async function exportAll() {
+  const r = await (await fetch('/export')).json();
+  const blob = new Blob([JSON.stringify(r, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'mind-sea-memory-export.json';
+  a.click();
+  toast('已导出');
+}
+
+function renderExplain(prefill) {
+  $('#dTitle').textContent = '召回解释';
+  $('#dSub').textContent = '为什么她会想起这些？五路打分看得见';
+  $('#detail').innerHTML =
+    `<div class="rq"><input id="exq" placeholder="输入一句话，试试她会想起什么" value="${esc(prefill || '')}">
+     <button onclick="doExplain()">召回</button></div><div id="exOut"></div>`;
+  $('#exq').addEventListener('keydown', ev => { if (ev.key === 'Enter') doExplain(); });
+  if (prefill) doExplain();
+}
+async function doExplain() {
+  const q = $('#exq').value.trim();
+  if (!q) return;
+  $('#exOut').innerHTML = '<div style="color:var(--dim2);font-size:12px">检索中…</div>';
+  try {
+    const { status, data } = await (await fetch('/recall', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: q, k: 6, minScore: 0.2, explain: true }) })).json();
+    if (status !== 'ok') throw new Error('fail');
+    if (!data.hits.length) { $('#exOut').innerHTML = '<div style="color:var(--dim2);font-size:12px">没有命中任何记忆</div>'; return; }
+    $('#exOut').innerHTML = data.hits.map(h => {
+      const w = h.why || {};
+      return `<div class="card">
+        <div class="t">${esc(h.text)}</div>
+        <div class="m"><em>${KIND_NAME[h.kind] || h.kind}</em><em>总分 <b>${h.score}</b></em></div>
+        <div class="why">
+          <em class="${w.keyword >= 0.3 ? 'hot' : ''}">关键词 ${w.keyword ?? '-'}</em>
+          <em>语义 ${w.semantic ?? '-'}</em>
+          <em>重要 ${w.importance ?? '-'}</em>
+          <em>新鲜 ${w.recency ?? '-'}</em>
+          <em>图谱 ${w.graph ?? '-'}</em>
+          ${w.graphOnly ? '<em class="hot">图谱扩散带入</em>' : ''}
+        </div></div>`;
+    }).join('');
+  } catch (e) { $('#exOut').innerHTML = '<div style="color:var(--bad);font-size:12px">检索失败：' + esc(e.message) + '</div>'; }
+}
+
+async function renderIntents() {
+  $('#dTitle').textContent = '承诺账本';
+  $('#dSub').textContent = '答应过的事，到点没做会标红';
+  $('#detail').innerHTML = '<div style="color:var(--dim2);font-size:12px">读取中…</div>';
+  try {
+    const { data } = await (await fetch('/intents')).json();
+    const list = data.intents || [];
+    if (!list.length) { $('#detail').innerHTML = '<div style="color:var(--dim2);font-size:12px;padding:6px 0">账本是空的——她还没有答应过什么事</div>'; return; }
+    $('#detail').innerHTML = list.map(t => {
+      const cls = t.status === 'resolved' ? 'resolved' : t.overdue ? 'overdue' : 'open';
+      const label = t.status === 'resolved' ? '已完成' : t.overdue ? '已逾期' : '进行中';
+      const due = t.due_at ? new Date(t.due_at).toLocaleString() : '无期限';
+      return `<div class="card"><div class="t">${esc(t.text || t.title || t.id)}</div>
+        <div class="m"><span class="status ${cls}">${label}</span><em>${due}</em></div></div>`;
+    }).join('');
+  } catch (e) { $('#detail').innerHTML = '<div style="color:var(--bad);font-size:12px">读取失败：' + esc(e.message) + '</div>'; }
+}
+
+async function renderHealth() {
+  $('#dTitle').textContent = '记忆体检';
+  $('#dSub').textContent = '只读 · 绝不改库';
+  $('#detail').innerHTML = '<div style="color:var(--dim2);font-size:12px">体检中…</div>';
+  try {
+    const { data } = await (await fetch('/healthcheck')).json();
+    const c = data.counts || {};
+    const row = (label, v) => `<div class="card"><div class="t">${label}</div><div class="m"><em>${v} 条</em></div></div>`;
+    let html =
+      row('活跃记忆', c.active ?? 0) +
+      row('即将淡忘（留存 <35%）', c.soonFading ?? 0) +
+      row('正在巩固（被想起 ≥5 次）', c.soonSolidifying ?? 0) +
+      row('待裁决事实冲突', c.pendingConflicts ?? 0) +
+      row('矛盾事实键', c.contradictoryFactKeys ?? 0) +
+      row('未闭环承诺', c.openIntents ?? 0) +
+      row('逾期承诺', c.overdueIntents ?? 0);
+    if ((data.soonFading || []).length) {
+      html += '<div class="sec-t">即将淡忘</div>' + data.soonFading.map(f =>
+        `<div class="card"><div class="t">${esc(f.label)}</div><div class="m"><em>留存 ${Math.round(f.retention * 100)}%</em></div></div>`).join('');
+    }
+    if ((data.violations || []).length) {
+      html += '<div class="sec-t">⚠️ 审计违规（夜间巡查报告，只报告不代改）</div>' + data.violations.map(v =>
+        `<div class="card"><div class="t">${esc(v.hint || v.type)}</div><div class="m"><em>${esc(v.type)}</em><em>${v.id || ''}</em><em>${v.days != null ? v.days + ' 天' : ''}</em></div></div>`).join('');
+    }
+    if (data.lastNightlyAt) {
+      html += `<div class="m" style="margin-top:8px"><em>上次夜间巡查：${new Date(data.lastNightlyAt).toLocaleString()}</em></div>`;
+    }
+    $('#detail').innerHTML = html;
+  } catch (e) { $('#detail').innerHTML = '<div style="color:var(--bad);font-size:12px">体检失败：' + esc(e.message) + '</div>'; }
+}
+
+async function renderStats() {
+  $('#dTitle').textContent = '星海统计';
+  $('#dSub').textContent = '记忆的构成与归属';
+  $('#detail').innerHTML = '<div style="color:var(--dim2);font-size:12px">统计中…</div>';
+  try {
+    const { data: s } = await (await fetch('/stats')).json();
+    const bar = (label, v, total) => {
+      const pct = total ? Math.round(v / total * 100) : 0;
+      return `<div class="hbar"><span class="lb">${esc(label)}</span><span class="tr"><i style="width:${pct}%"></i></span><span class="vl">${v} · ${pct}%</span></div>`;
+    };
+    $('#detail').innerHTML =
+      '<div class="sec-t">按类型</div>' +
+      Object.entries(s.kinds || {}).sort((a, b) => b[1] - a[1]).map(([k, v]) => bar(KIND_NAME[k] || k, v, s.active)).join('') +
+      '<div class="sec-t">按归属</div>' +
+      Object.entries(s.owners || {}).sort((a, b) => b[1] - a[1]).map(([k, v]) => bar(k, v, s.active)).join('') +
+      `<div class="m" style="margin-top:10px"><em>归档 ${s.archived}</em><em>被想起 ${s.hits}</em><em>合并 ${s.merged}</em><em>已遗忘 ${s.forgotten}</em></div>`;
+  } catch (e) { $('#detail').innerHTML = '<div style="color:var(--bad);font-size:12px">统计失败</div>'; }
+}
+
+/* ---------------- 工具 ---------------- */
+$('#days').addEventListener('change', e => { days = Number(e.target.value) || 0; load(); });
+$('#q').addEventListener('input', e => { query = e.target.value.trim().toLowerCase(); });
+$('#chips').addEventListener('click', e => {
+  const c = e.target.closest('[data-k]');
+  if (!c) return;
+  kindFilter = c.dataset.k === kindFilter ? '' : c.dataset.k;
+  load();
+});
+function toggleSpin() {
+  autoSpin = !autoSpin;
+  $('#spinBtn').textContent = autoSpin ? '⏸ 自转' : '▶ 自转';
+  $('#spinBtn').classList.toggle('off', !autoSpin);
+}
+function toggleTour() {
+  tour = !tour;
+  $('#tourBtn').classList.toggle('off', !tour);
+  toast(tour ? '巡游模式：运镜接管，坐好看星海' : '巡游结束');
+}
+function tog(k) {
+  show[k] = !show[k];
+  const el = k === 'edges' ? $('#tEdges') : k === 'labels' ? $('#tLabels') : k === 'relationsOnly' ? $('#tRel') : $('#tStars');
+  el.classList.toggle('off', !show[k]);
+}
+function resetCam() { yaw = 0.6; pitch = -0.2; dist = 900; }
+function screenshot() {
+  cv.toBlob(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = '记忆星海-' + new Date().toISOString().slice(0, 10) + '.png';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast('星海截图已保存');
+  }, 'image/png');
+}
+function focusMem(memId) {
+  const p = POINTS.find(x => x.memId === memId);
+  if (!p) return;
+  selectedId = p.id;
+  toast('已定位：' + p.label);
+}
+async function runNightly() {
+  const r = await fetch('/nightly', { method: 'POST' }).then(x => x.json()).catch(() => null);
+  if (r && r.status === 'ok') {
+    const d = r.data;
+    toast(`夜巡完成 · 衰减 ${d.decayed ?? '-'} · 归档 ${d.archived ?? '-'} · 合并 ${d.merged ?? '-'} · 清除 ${d.purged ?? '-'} · 活跃 ${d.active ?? '-'}`);
+    load();
+  } else toast('夜巡失败');
+}
+
+addEventListener('keydown', e => {
+  if (e.code === 'Space' && !/INPUT|TEXTAREA|SELECT/.test((document.activeElement || {}).tagName || '')) {
+    e.preventDefault(); toggleSpin();
+  }
+});
+
+/* 启动 */
+load();
+setInterval(load, 30000);
+requestAnimationFrame(frame);
+/* 看门狗：循环若因任何原因停了，2 秒内自动重启 */
+setInterval(() => {
+  if (performance.now() - lastFrameAt > 2000) {
+    lastFrameAt = performance.now();
+    requestAnimationFrame(frame);
+  }
+}, 1500);
+if (typeof ResizeObserver !== 'undefined') {
+  try { new ResizeObserver(() => resize()).observe(document.documentElement); } catch { /* ignore */ }
+}
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) { resize(); lastFrameAt = performance.now(); requestAnimationFrame(frame); }
+});
+</script>
+</body>
+</html>

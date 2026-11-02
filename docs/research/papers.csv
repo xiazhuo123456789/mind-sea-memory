@@ -1,0 +1,31 @@
+title,authors,year,venue,status,paper_url,code_url,topic,method,benchmark,relevance,notes
+Generative Agents: Interactive Simulacra of Human Behavior,"Park, O'Brien, Cai, Morris, Bernstein, Liang",2023,UIST 2023,正式,https://doi.org/10.1145/3586183.3606763,,memory-stream reflection plan,recency x importance x relevance retrieval; reflection tree,,自研小镇观察,必读,反思树与三因素检索蓝本; 成本高
+MemGPT: Towards LLMs as Operating Systems,"Packer, Wooders, Lin, Fang, Patil, Peng, Gonzalez",2023,arXiv 预印,预印,https://arxiv.org/abs/2310.08560,https://github.com/cpacker/MemGPT,hierarchical-memory os,main context + external storage + self-edit tools,,必读,记忆编辑工具语义参照
+MemoryBank,Zhong et al,2023,arXiv 预印,预印,https://arxiv.org/abs/2305.10250,,forgetting-curve dialogue,Ebbinghaus decay + summary,,重要,遗忘曲线工程先声
+LoCoMo: Evaluating Very Long-Term Conversational Memory of LLM Agents,Maharana et al,2024,ACL 2024,正式,https://aclanthology.org/2024.acl-long.747/,,benchmark,long multi-session QA,LoCoMo,必读,超长对话评测蓝本
+HippoRAG,Gutierrez et al (OSU),2024,NeurIPS 2024,正式,https://arxiv.org/abs/2405.14831,https://github.com/OSU-NLP-Group/HippoRAG,graph-retrieval,KG + Personalized PageRank,MuSiQue 2WikiMultiHopQA,必读,单步多跳; 多跳QA+~20%
+On the Structural Memory of LLM Agents,Sumers et al,2024,arXiv 预印,预印,https://arxiv.org/abs/2412.15266,,survey,结构比较,,重要,记忆结构分类
+LongMemEval,Wu et al,2025,ICLR 2025,正式,https://github.com/xiaowu0162/LongMemEval,,benchmark,信息提取/多会话推理/时间推理/知识更新/拒答,LongMemEval,必读,五维能力评测蓝本
+A-MEM: Agentic Memory for LLM Agents,Xu et al,2025,NeurIPS 2025,正式,https://arxiv.org/abs/2502.12110,https://github.com/agiresearch/A-mem,agentic-memory,Zettelkasten notes + linking + evolution,LoCoMo 类,必读,记忆演化; 新记忆触发旧记忆更新
+Zep: A Temporal Knowledge Graph Architecture for Agent Memory,Rasmussen et al (Zep),2025,arXiv 预印,预印,https://arxiv.org/abs/2501.13956,https://github.com/getzep/graphiti,temporal-kg,bi-temporal edges + invalidation + episodic/semantic/community,LongMemEval,必读,双时间线与边失效算法
+Mem0: Building Production-Ready AI Agents with Scalable Long-Term Memory,Chhikara et al,2025,arXiv 预印,预印,https://arxiv.org/abs/2504.19413,https://github.com/mem0ai/mem0,memory-layer,fact extraction + ADD/UPDATE/DELETE/NOOP,LoCoMo(有争议),必读,生产管线; 分数有争议不可直接引用
+Memory-R1,Yan et al,2025,arXiv 预印,预印,https://arxiv.org/abs/2508.19828,https://github.com/yansikuan/memory-r1,rl-memory,RL policy ADD/UPDATE/DELETE/NOOP + distillation,long-horizon QA,重要,操作原语设计可借鉴; 训练管线暂不引入
+LightMem,Fang et al (zjunlp),2025,ICLR 2026,接收(据检索),https://arxiv.org/abs/2510.18866,https://github.com/zjunlp/LightMem,three-stage,sensory filter + topic STM + sleep-time LTM,LongMemEval,必读,token -10.9x; 准确率+71.4%(自报)
+Memory in the Age of AI Agents,,2025/2026,arXiv 预印,预印,https://arxiv.org/abs/2512.13564,,survey,全景综述,,重要,全文未读; 只核验摘要
+SimpleMem: Efficient Lifelong Memory for LLM Agents,Liu et al,2026,ICML 2026(据检索),接收(据检索),https://arxiv.org/abs/2601.02553,https://github.com/aiming-lab/SimpleMem,compression,semantic lossless compression + recursive consolidation + query-adaptive,,前沿观察,token -98%(自报); license 待核验
+Human-Inspired Memory Architecture for LLM Agents,Microsoft Research,2026,MSR 出版页,正式(页面核验),https://www.microsoft.com/en-us/research/publication/human-inspired-memory-architecture-for-llm-agents/,,cognitive,sleep consolidation + interference + engram maturation + reconsolidation,,重要,认知机制最全; 干扰遗忘值得实验
+A Survey on the Memory Mechanism of LLM-based Agents,,2025,ACM TOIS,正式,https://doi.org/10.1145/3748302,,survey,写入/管理/读取/合并/反思/遗忘,,重要,分类框架
+RAPTOR: Recursive Abstractive Processing for Tree-Organized Retrieval,Sarthi et al,2024,arXiv 预印,预印,https://arxiv.org/abs/2401.18059,,tree-retrieval,recursive summary tree,,重要,三层认知的检索形态参照
+Reflexion: Language Agents with Verbal Reinforcement Learning,Shinn et al,2023,arXiv 预印,预印,https://arxiv.org/abs/2303.11366,,reflection,失败经验 -> 反思记忆,,重要,skill 类记忆理论来源
+HippoRAG 2,OSU-NLP-Group,2025,arXiv 预印,预印,https://github.com/OSU-NLP-Group/HippoRAG,,graph-retrieval,PPR + dense retrieval + continual learning,,前沿观察,
+Letta (MemGPT 继承),letta-ai,2024-2026,GitHub 项目,工程,https://github.com/letta-ai/letta,,agent-runtime,core memory + self-edit tools,,重要,记忆编辑工具语义
+MemOS,MemTensor,2026,GitHub 项目,工程,https://github.com/MemTensor/MemOS,,memory-os,记忆调度,,前沿观察,重基础设施
+dsh-meow-memory,Phant0Meow,2026,GitHub 项目,工程,https://github.com/Phant0Meow/dsh-meow-memory,,dsh-plugin,七层 SQLite,,重要,同生态直接竞品
+dsh-mnemon,omdsh-dev,2026,GitHub 项目,工程,https://github.com/omdsh-dev/dsh-mnemon,,dsh-plugin,可组合上下文,,前沿观察,同生态
+memory-brain,peterpoal134,2026,GitHub 项目,工程,https://github.com/peterpoal134/memory-brain,,memory-layer,五路打分 + SQLite + 情绪 + AGPL,,必读,权重来源; AGPL 防传染
+Cognee,topoteretes,2024-2026,GitHub 项目,工程,https://github.com/topoteretes/cognee,,kg-vector,KG+向量混合,,前沿观察,部署复杂度待查
+Supermemory,supermemoryai,2024-2026,GitHub 项目,工程,https://github.com/supermemoryai/supermemory,,memory-api,通用记忆 API,,前沿观察,
+MemU,NevaMind-AI,2026,GitHub 项目,工程,https://github.com/NevaMind-AI/memU,,filesystem,三层文件系统 + 图谱蒸馏,,前沿观察,
+flowix,text2future,2026,GitHub 项目,工程,https://github.com/text2future/flowix,,dsh-plugin,笔记+记忆 for DSH,,重要,同生态竞品
+dsh-auto-memory,AskTheWay,2026,GitHub 项目,工程,https://github.com/AskTheWay/dsh-auto-memory,,dsh-plugin,Claude Code 式自动记忆,,重要,同生态竞品
+蓝色大肥鱼档案馆,EDMOK,2026,GitHub 项目,工程,https://github.com/EDMOK/blue-fish-archive,,archive,大肥鱼资料档案,,前沿观察,生态资料

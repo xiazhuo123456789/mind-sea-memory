@@ -1,0 +1,54 @@
+{
+  "port": 8790,
+  "host": "127.0.0.1",
+  "token": "",
+  "llm": {
+    "baseUrl": "https://api.deepseek.com/v1",
+    "apiKey": "sk-在这里填你的Key",
+    "model": "deepseek-chat"
+  },
+  "upstream": {
+    "baseUrl": "https://api.deepseek.com/v1",
+    "apiKey": "sk-在这里填你的Key",
+    "model": "deepseek-chat"
+  },
+  "recall": {
+    "k": 5,
+    "minScore": 0.35,
+    "maxBytes": 1400,
+    "maxItems": 5
+  },
+  "remember": {
+    "enabled": true,
+    "minChars": 6,
+    "importance": 0.4
+  },
+  "defaultUser": "dsh:main",
+  "reminders": {
+    "webhook": "",
+    "intervalMin": 10
+  },
+  "nightly": {
+    "purgeDays": 180,
+    "freqWindowDays": 30,
+    "archiveProtectDays": 30,
+    "protectNames": [
+      "妈妈",
+      "老王"
+    ],
+    "protectFloor": 0.45,
+    "kindCaps": {
+      "fact": 3000,
+      "skill": 500
+    },
+    "autoConflict": true
+  },
+  "buffer": {
+    "enabled": true,
+    "maxItems": 6,
+    "maxChars": 900
+  },
+  "state": {
+    "enabled": true
+  }
+}

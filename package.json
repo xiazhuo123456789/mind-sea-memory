@@ -1,0 +1,31 @@
+{
+  "name": "mind-sea-memory",
+  "version": "1.5.4",
+  "description": "记忆星海 · AI QQ 机器人的跨会话长期记忆层（零依赖 Node，3D 记忆可视化，MCP 一键接入 DSH）",
+  "type": "module",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node scripts/test.mjs && node scripts/test-v2.mjs && node scripts/test-v3.mjs",
+    "test:v3": "node scripts/test-v3.mjs",
+    "nightly": "node scripts/nightly.mjs",
+    "nightly:digest": "node scripts/nightly.mjs --digest"
+  },
+  "keywords": [
+    "qq",
+    "qqbot",
+    "onebot",
+    "memory",
+    "rag",
+    "deepseek",
+    "dsh",
+    "mcp",
+    "chatbot",
+    "ai",
+    "forgetting-curve"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}

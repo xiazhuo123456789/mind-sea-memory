@@ -1,0 +1,7 @@
+node_modules/
+data/
+config.json
+*.log
+*.tmp
+.test/
+COMMIT_MSG.txt
